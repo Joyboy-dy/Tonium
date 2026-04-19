@@ -3,6 +3,16 @@ import path from 'path';
 import { ProjectInfo } from '../scanner/Scanner.js';
 
 export interface ToniumConfig {
+  version: string;
+  locale: 'fr' | 'en';              // Langue du CLI (Human-facing)
+  aiArtifactsLanguage: 'en';        // Langue forcée (AI-facing)
+  projectType: string;
+  features: {
+    ai: boolean;
+    mcp: boolean;
+    skills: boolean;
+    typography: boolean;
+  };
   project: ProjectInfo;
   brand: {
     name: string;
@@ -12,10 +22,14 @@ export interface ToniumConfig {
       secondary?: string;
       accent?: string;
     };
+    typography?: {
+      heading: string;
+      body: string;
+      mono?: string;
+    };
   };
   options: {
     themeMode: 'light' | 'dark' | 'hybrid';
-    iaEnabled: boolean;
     openRouterKey?: string;
   };
 }

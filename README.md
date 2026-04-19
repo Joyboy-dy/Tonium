@@ -119,7 +119,7 @@ Tonium est conçu pour fonctionner de manière agnostique sur les environnements
 
 ## 📄 Licence
 
-Distribué sous licence ISC. Voir `LICENSE` pour plus d'informations.
+Distribué sous licence **Apache 2.0**. Toute œuvre dérivée doit impérativement inclure une mention et un lien vers le projet original **Tonium**, conformément aux termes du fichier `NOTICE`.
 
 ---
 *Propulsé par Tonium - L'excellence visuelle pilotée par le code.*

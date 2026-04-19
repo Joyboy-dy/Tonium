@@ -18,29 +18,36 @@ export class AgentGenerator {
   }
 
   private async generateBrandSystem(config: ToniumConfig): Promise<void> {
-    const content = `# Système de Marque : ${config.brand.name}
+    const content = `# Brand System: ${config.brand.name}
 
-## Identité
-- **Nom** : ${config.brand.name}
-- **Thème** : ${config.options.themeMode}
+## Identity
+- **Name**: ${config.brand.name}
+- **Sector**: ${config.projectType}
+- **Theme Mode**: ${config.options.themeMode}
 
-## Palette de Couleurs (Tokens)
-- **Primaire** : ${config.brand.colors.primary}
+## Color Palette (Tokens)
+- **Primary**: ${config.brand.colors.primary}
 
-## Signature Visuelle
-Ce système privilégie la cohérence chromatique via OKLCH. Les agents doivent respecter les contrastes WCAG AA lors de la génération d'interfaces.
+## Typography
+- **Heading**: ${config.brand.typography?.heading || 'System Default'}
+- **Body**: ${config.brand.typography?.body || 'System Default'}
+
+## Visual Signature
+This system prioritizes visual consistency using the OKLCH color space. Agents must strictly adhere to WCAG AA contrast standards (minimum 4.5:1 ratio) when generating UI components.
 `;
     await fs.writeFile(path.join(this.cwd, this.baseDir, 'brand-system.md'), content);
   }
 
   private async generateDesignRules(config: ToniumConfig): Promise<void> {
-    const content = `# Règles de Design (Tonium)
+    const content = `# Design Rules (Tonium)
 
-1. **Accessibilité** : Ne jamais utiliser de texte avec un ratio de contraste < 4.5:1 sur son arrière-plan.
-2. **Couleurs** : Utiliser uniquement les variables CSS définies dans \`globals.css\`.
-3. **Hiérarchie** : Respecter la rampe tonale générée pour les états (hover, active, disabled).
-4. **Mode** : En mode ${config.options.themeMode}, s'assurer que les surfaces respectent la polarité choisie.
+1. **Accessibility**: Never use text with a contrast ratio below 4.5:1 relative to its background.
+2. **Color Usage**: Use ONLY the CSS variables defined in \`globals.css\`. Do not use arbitrary hex codes.
+3. **Hierarchy**: Follow the generated tonal ramp for interactive states (hover, active, focus, disabled).
+4. **Theme**: In ${config.options.themeMode} mode, ensure surfaces respect the established brand polarity.
+5. **Layout**: Maintain consistent spacing and alignment as per the project's standard grid.
 `;
     await fs.writeFile(path.join(this.cwd, this.baseDir, 'design-rules.md'), content);
   }
 }
+
