@@ -9,8 +9,13 @@
   "scripts": {
     "dev": "tsx src/bin/tonium.ts",
     "build": "tsc",
-    "start": "node dist/src/bin/tonium.js"
+    "start": "node dist/src/bin/tonium.js",
+    "prepublishOnly": "npm run build"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "keywords": [],
   "author": "",
   "license": "ISC",
