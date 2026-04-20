@@ -89,6 +89,17 @@ npx tonium apply
 - Crée/met à jour `AGENTS.md` à la racine
 - Génère le skill standard sous `.agents/skills/chromatic-design/`
 
+### 3. Audit
+Tonium analyse vos styles actifs, détecte les couleurs (hex, rgb, hsl, oklch), puis écrit systématiquement les rapports d'audit.
+```bash
+npx tonium audit
+```
+
+**Contrat des commandes :**
+- `init` : initialise la configuration, la détection projet et les dossiers Tonium.
+- `audit` : lit l'existant et écrit `.tonium/reports/audit.json` + `.tonium/reports/audit.md`.
+- `apply` : génère les tokens primitifs + sémantiques, met à jour le CSS actif, puis génère les artefacts agents.
+
 ---
 
 ## 🛠 Détection du projet

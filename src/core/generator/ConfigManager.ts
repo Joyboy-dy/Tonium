@@ -50,6 +50,8 @@ export class ConfigManager {
     await fs.ensureDir(path.join(this.cwd, '.agents/skills'));
     await fs.ensureDir(path.join(this.cwd, this.configDir, 'tokens'));
     await fs.ensureDir(path.join(this.cwd, this.configDir, 'generated'));
+    await fs.ensureDir(path.join(this.cwd, this.configDir, 'reports'));
+    await fs.ensureDir(path.join(this.cwd, this.configDir, 'scan'));
   }
 
   async saveConfig(config: ToniumConfig): Promise<void> {

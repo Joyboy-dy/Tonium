@@ -4,6 +4,8 @@ import { Scanner } from '../core/scanner/Scanner.js';
 import { ConfigManager, ToniumConfig } from '../core/generator/ConfigManager.js';
 import { logger } from '../utils/logger.js';
 import { t, Locale } from '../utils/i18n.js';
+import fs from 'fs-extra';
+import path from 'path';
 
 export async function initCommand() {
   // 1. Sélection de la langue
@@ -132,6 +134,11 @@ export async function initCommand() {
     if (p.isCancel(keepFonts)) return;
 
     keepExistingFonts = keepFonts === true;
+    if (keepExistingFonts) {
+      headingFont = projectInfo.detectedFonts.heading || '';
+      bodyFont = projectInfo.detectedFonts.body || '';
+      monoFont = projectInfo.detectedFonts.mono || '';
+    }
   }
 
   if (!keepExistingFonts) {
@@ -195,8 +202,37 @@ export async function initCommand() {
   finalLoading.start(t(locale, 'cli.initSuccess'));
   await configManager.initDirs();
   await configManager.saveConfig(config);
+
+  const detectionPath = path.join(process.cwd(), '.tonium/reports/project-detection.json');
+  await fs.ensureDir(path.dirname(detectionPath));
+  await fs.writeJson(detectionPath, projectInfo, { spaces: 2 });
+
+  const createAgentsEntry = await p.confirm({
+    message: locale === 'fr' ? 'Créer une entrée minimale AGENTS.md ?' : 'Create a minimal AGENTS.md entry?',
+    initialValue: true,
+  });
+
+  if (createAgentsEntry === true) {
+    const agentsPath = path.join(process.cwd(), 'AGENTS.md');
+    const minEntry = `<!-- BEGIN:tonium-init -->
+# Tonium setup
+
+- Run \`tonium audit\` to analyze current styles.
+- Run \`tonium apply\` to generate tokens and apply project updates.
+<!-- END:tonium-init -->`;
+
+    if (await fs.pathExists(agentsPath)) {
+      const existing = await fs.readFile(agentsPath, 'utf-8');
+      if (!existing.includes('<!-- BEGIN:tonium-init -->')) {
+        await fs.writeFile(agentsPath, `${existing.trimEnd()}\n\n${minEntry}\n`, 'utf-8');
+      }
+    } else {
+      await fs.writeFile(agentsPath, `${minEntry}\n`, 'utf-8');
+    }
+  }
   finalLoading.stop(t(locale, 'cli.initSuccess'));
+  logger.info(`${locale === 'fr' ? 'Configuration' : 'Config'}: ${chalk.cyan('.tonium/config.json')}`);
+  logger.info(`${locale === 'fr' ? 'Détection projet' : 'Project detection'}: ${chalk.cyan('.tonium/reports/project-detection.json')}`);
 
   p.outro(chalk.green(t(locale, 'cli.outroInit')));
 }
-

@@ -10,17 +10,20 @@ export class AgentGenerator {
     this.cwd = cwd;
   }
 
-  async generate(config: ToniumConfig): Promise<void> {
+  async generate(config: ToniumConfig): Promise<string[]> {
     await fs.ensureDir(path.join(this.cwd, this.baseDir));
+    const writtenPaths: string[] = [];
 
-    await this.generateBrandSystem(config);
-    await this.generateDesignRules(config);
-    await this.generateAgentsMd(config);
-    await this.generateChromaticSkill(config);
-    await this.copyChromaticSkillFile();
+    writtenPaths.push(await this.generateBrandSystem(config));
+    writtenPaths.push(await this.generateDesignRules(config));
+    writtenPaths.push(await this.generateAgentsMd(config));
+    writtenPaths.push(...(await this.generateChromaticSkill()));
+    writtenPaths.push(...(await this.copyChromaticSkillFile()));
+
+    return writtenPaths;
   }
 
-  private async generateBrandSystem(config: ToniumConfig): Promise<void> {
+  private async generateBrandSystem(config: ToniumConfig): Promise<string> {
     const content = `# Brand System: ${config.brand.name}
 
 ## Identity
@@ -42,10 +45,12 @@ export class AgentGenerator {
 ## Visual Signature
 This system prioritizes visual consistency using the OKLCH color space. Agents must strictly adhere to WCAG AA contrast standards (minimum 4.5:1 ratio) when generating UI components.
 `;
-    await fs.writeFile(path.join(this.cwd, this.baseDir, 'brand-system.md'), content);
+    const brandSystemPath = path.join(this.cwd, this.baseDir, 'brand-system.md');
+    await fs.writeFile(brandSystemPath, content);
+    return brandSystemPath;
   }
 
-  private async generateDesignRules(config: ToniumConfig): Promise<void> {
+  private async generateDesignRules(config: ToniumConfig): Promise<string> {
     const content = `# Design Rules (Tonium)
 
 1. **Accessibility**: Never use text with a contrast ratio below 4.5:1 relative to its background.
@@ -54,10 +59,12 @@ This system prioritizes visual consistency using the OKLCH color space. Agents m
 4. **Theme**: In ${config.options.themeMode} mode, ensure surfaces respect the established brand polarity.
 5. **Layout**: Maintain consistent spacing and alignment as per the project's standard grid.
 `;
-    await fs.writeFile(path.join(this.cwd, this.baseDir, 'design-rules.md'), content);
+    const designRulesPath = path.join(this.cwd, this.baseDir, 'design-rules.md');
+    await fs.writeFile(designRulesPath, content);
+    return designRulesPath;
   }
 
-  private async generateAgentsMd(config: ToniumConfig): Promise<void> {
+  private async generateAgentsMd(config: ToniumConfig): Promise<string> {
     const agentsMdPath = path.join(this.cwd, 'AGENTS.md');
     const toniumBlock = `<!-- BEGIN:tonium -->
 # Tonium Agent Context
@@ -67,9 +74,7 @@ Read and follow these project-specific design rules before making UI changes.
 ## Tonium resources
 - Brand system: \`.agents/tonium/brand-system.md\`
 - Design rules: \`.agents/tonium/design-rules.md\`
-- Chromatic design skill: \`.agents/skills/chromatic-design/chromatic-design.md\` (MASTER REFERENCE - read this first for any color work)
-- Color models reference: \`.agents/skills/chromatic-design/references/color-models.md\`
-- WCAG formulas reference: \`.agents/skills/chromatic-design/references/wcag-formulas.md\`
+- Chromatic design skill: \`.agents/skills/chromatic-design/SKILL.md\`
 
 ## Mandatory rules
 - Respect the project color tokens defined in \`app/globals.css\`
@@ -102,12 +107,12 @@ Read and follow these project-specific design rules before making UI changes.
       // Create new file
       await fs.writeFile(agentsMdPath, toniumBlock);
     }
+    return agentsMdPath;
   }
 
-  private async generateChromaticSkill(config: ToniumConfig): Promise<void> {
+  private async generateChromaticSkill(): Promise<string[]> {
     const skillDir = path.join(this.cwd, '.agents/skills/chromatic-design');
     await fs.ensureDir(skillDir);
-    await fs.ensureDir(path.join(skillDir, 'references'));
 
     const skillContent = `# Chromatic Design Skill
 
@@ -145,48 +150,18 @@ Typography is managed via next/font/google for Next.js projects. Font variables 
 5. Respect the project's theme mode (light, dark, or hybrid)
 `;
 
-    await fs.writeFile(path.join(skillDir, 'SKILL.md'), skillContent);
-
-    // Create reference files
-    const contrastRules = `# Contrast Rules
-
-## WCAG AA Standards
-
-- Normal text (below 18pt): 4.5:1 minimum
-- Large text (18pt and above): 3:1 minimum
-- UI components: 3:1 minimum
-
-## Testing Contrast
-
-Use the Tonium ColorEngine.getContrast() method to verify ratios.
-`;
-    await fs.writeFile(path.join(skillDir, 'references/contrast-rules.md'), contrastRules);
-
-    const tokenMapping = `# Token Mapping
-
-## Color Tokens
-
-Color tokens follow the pattern: \`--color{N}-{LEVEL}\`
-
-Example:
-- \`--color1-500\`: Base color from first palette color
-- \`--color1-900\`: Dark variant from first palette color
-
-## Typography Tokens
-
-- \`--font-heading\`: Heading font family
-- \`--font-body\`: Body text font family
-- \`--font-mono\`: Monospace font family for code
-`;
-    await fs.writeFile(path.join(skillDir, 'references/token-mapping.md'), tokenMapping);
+    const skillPath = path.join(skillDir, 'SKILL.md');
+    await fs.writeFile(skillPath, skillContent);
+    return [skillPath];
   }
 
-  private async copyChromaticSkillFile(): Promise<void> {
+  private async copyChromaticSkillFile(): Promise<string[]> {
     // Copy chromatic-design skill from package to project
     const packageRoot = path.resolve(__dirname, '../../../..');
     const skillSourceDir = path.join(packageRoot, 'skills/chromatic-design');
 
     const skillDestDir = path.join(this.cwd, '.agents/skills/chromatic-design');
+    const copied: string[] = [];
 
     // Copy entire chromatic-design directory
     if (await fs.pathExists(skillSourceDir)) {
@@ -201,8 +176,9 @@ Example:
         } else {
           await fs.copy(srcPath, destPath);
         }
+        copied.push(destPath);
       }
     }
+    return copied;
   }
 }
-
