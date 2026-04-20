@@ -18,14 +18,15 @@ export interface ToniumConfig {
     name: string;
     personality: string[];
     colors: {
-      primary: string;
-      secondary?: string;
-      accent?: string;
+      palette: string[];
+      outputFormat: 'hex' | 'rgb' | 'hsl' | 'oklch';
+      strictPalette: boolean;
     };
     typography?: {
       heading: string;
       body: string;
       mono?: string;
+      keepExisting: boolean;
     };
   };
   options: {
@@ -46,7 +47,9 @@ export class ConfigManager {
   async initDirs(): Promise<void> {
     await fs.ensureDir(path.join(this.cwd, this.configDir));
     await fs.ensureDir(path.join(this.cwd, '.agents/tonium'));
+    await fs.ensureDir(path.join(this.cwd, '.agents/skills'));
     await fs.ensureDir(path.join(this.cwd, this.configDir, 'tokens'));
+    await fs.ensureDir(path.join(this.cwd, this.configDir, 'generated'));
   }
 
   async saveConfig(config: ToniumConfig): Promise<void> {

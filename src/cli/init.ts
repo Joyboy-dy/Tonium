@@ -55,14 +55,6 @@ export async function initCommand() {
   const brand = await p.group({
     name: () => p.text({ message: t(locale, 'cli.brandName'), placeholder: projectInfo.name }),
     context: () => p.text({ message: t(locale, 'cli.brandContext') }),
-    primaryColor: () => p.text({ 
-      message: t(locale, 'cli.primaryColor'),
-      placeholder: '#3b82f6',
-      validate: (v) => !v || v.length < 3 ? t(locale, 'cli.invalidValue') : undefined
-    }),
-    headingFont: () => p.text({ message: t(locale, 'cli.typographyHeading'), placeholder: 'Inter' }),
-    bodyFont: () => p.text({ message: t(locale, 'cli.typographyBody'), placeholder: 'Inter' }),
-    monoFont: () => p.text({ message: t(locale, 'cli.typographyMono'), placeholder: 'Fira Code' }),
   });
 
   if (p.isCancel(brand)) {
@@ -82,6 +74,83 @@ export async function initCommand() {
 
   if (p.isCancel(mode)) return;
 
+  // Système couleur
+  const colorOutputFormat = await p.select({
+    message: t(locale, 'cli.colorOutputFormat'),
+    options: [
+      { value: 'hex', label: t(locale, 'cli.colorOutputFormatHex') },
+      { value: 'rgb', label: t(locale, 'cli.colorOutputFormatRgb') },
+      { value: 'hsl', label: t(locale, 'cli.colorOutputFormatHsl') },
+      { value: 'oklch', label: t(locale, 'cli.colorOutputFormatOklch'), hint: 'Recommended for better contrast' },
+    ],
+  });
+
+  if (p.isCancel(colorOutputFormat)) return;
+
+  const brandPaletteInput = await p.text({
+    message: t(locale, 'cli.brandPalette'),
+    placeholder: t(locale, 'cli.brandPalettePlaceholder'),
+    validate: (v) => !v || v.length < 3 ? t(locale, 'cli.invalidValue') : undefined,
+  });
+
+  if (p.isCancel(brandPaletteInput)) return;
+
+  const brandPalette = brandPaletteInput.split(',').map(c => c.trim()).filter(c => c.length > 0);
+
+  const strictPalette = await p.confirm({
+    message: t(locale, 'cli.strictPalette'),
+    initialValue: false,
+  });
+
+  if (p.isCancel(strictPalette)) return;
+
+  // Gestion des polices
+  let keepExistingFonts = false;
+  let headingFont = '';
+  let bodyFont = '';
+  let monoFont = '';
+
+  const hasDetectedFonts = Object.keys(projectInfo.detectedFonts).some(key => projectInfo.detectedFonts[key as keyof typeof projectInfo.detectedFonts]);
+
+  if (hasDetectedFonts) {
+    p.note(`${t(locale, 'cli.detectedFonts')}`);
+    if (projectInfo.detectedFonts.heading) {
+      p.note(t(locale, 'cli.detectedFontsHeading', { font: projectInfo.detectedFonts.heading }));
+    }
+    if (projectInfo.detectedFonts.body) {
+      p.note(t(locale, 'cli.detectedFontsBody', { font: projectInfo.detectedFonts.body }));
+    }
+    if (projectInfo.detectedFonts.mono) {
+      p.note(t(locale, 'cli.detectedFontsMono', { font: projectInfo.detectedFonts.mono }));
+    }
+
+    const keepFonts = await p.confirm({
+      message: t(locale, 'cli.keepFonts'),
+      initialValue: true,
+    });
+
+    if (p.isCancel(keepFonts)) return;
+
+    keepExistingFonts = keepFonts === true;
+  }
+
+  if (!keepExistingFonts) {
+    const fonts = await p.group({
+      headingFont: () => p.text({ message: t(locale, 'cli.typographyHeading'), placeholder: 'Inter' }),
+      bodyFont: () => p.text({ message: t(locale, 'cli.typographyBody'), placeholder: 'Inter' }),
+      monoFont: () => p.text({ message: t(locale, 'cli.typographyMono') }),
+    });
+
+    if (p.isCancel(fonts)) {
+      p.cancel(t(locale, 'cli.cancel'));
+      return;
+    }
+
+    headingFont = fonts.headingFont || '';
+    bodyFont = fonts.bodyFont || '';
+    monoFont = fonts.monoFont || '';
+  }
+
   // IA Optionnelle
   const useIA = await p.confirm({ message: t(locale, 'cli.iaEnabled'), initialValue: false });
   let openRouterKey;
@@ -90,7 +159,7 @@ export async function initCommand() {
   }
 
   const config: ToniumConfig = {
-    version: '1.0.1',
+    version: '1.2.0',
     locale,
     aiArtifactsLanguage: 'en',
     projectType: projectInfo.isNextJs ? 'nextjs' : 'unknown',
@@ -105,12 +174,15 @@ export async function initCommand() {
       name: brand.name,
       personality: [],
       colors: {
-        primary: brand.primaryColor,
+        palette: brandPalette,
+        outputFormat: colorOutputFormat as any,
+        strictPalette: strictPalette === true,
       },
       typography: {
-        heading: brand.headingFont || 'Inter',
-        body: brand.bodyFont || 'Inter',
-        mono: brand.monoFont || 'Fira Code',
+        heading: headingFont,
+        body: bodyFont,
+        mono: monoFont || undefined,
+        keepExisting: keepExistingFonts,
       }
     },
     options: {

@@ -4,9 +4,13 @@ export interface ColorRamp {
   [key: string]: string;
 }
 
+export type ColorFormat = 'hex' | 'rgb' | 'hsl' | 'oklch';
+
 export class ColorEngine {
   private toOklch = converter('oklch');
   private toHex = converter('hex');
+  private toRgb = converter('rgb');
+  private toHsl = converter('hsl');
 
   /**
    * Convert any valid color string to OKLCH format
@@ -19,10 +23,37 @@ export class ColorEngine {
   }
 
   /**
+   * Convert a color to the specified output format
+   * All calculations are done in OKLCH internally, then converted to target format
+   */
+  convertFormat(colorStr: string, targetFormat: ColorFormat): string {
+    const parsed = parse(colorStr);
+    if (!parsed) throw new Error(`Invalid color format: ${colorStr}`);
+
+    // First convert to OKLCH for consistency
+    const oklch = this.toOklch(parsed);
+
+    // Then convert to target format
+    switch (targetFormat) {
+      case 'hex':
+        return formatHex(this.toHex(oklch));
+      case 'rgb':
+        return formatCss(this.toRgb(oklch));
+      case 'hsl':
+        return formatCss(this.toHsl(oklch));
+      case 'oklch':
+        return formatCss(oklch);
+      default:
+        return formatHex(this.toHex(oklch));
+    }
+  }
+
+  /**
    * Generate a tonal ramp based on a base color
    * Logic: Vary L (lightness) from 0.95 to 0.1
+   * All calculations in OKLCH, output in specified format
    */
-  generateRamp(baseColorStr: string): ColorRamp {
+  generateRamp(baseColorStr: string, outputFormat: ColorFormat = 'hex'): ColorRamp {
     const base = this.toOklch(parse(baseColorStr)!);
     const ramp: ColorRamp = {};
 
@@ -42,10 +73,23 @@ export class ColorEngine {
 
     for (const [level, lightness] of Object.entries(levels)) {
       const shade = { ...base, l: lightness };
-      ramp[level] = formatHex(shade);
+      // Convert to target format
+      ramp[level] = this.convertFormat(formatCss(shade), outputFormat);
     }
 
     return ramp;
+  }
+
+  /**
+   * Generate tonal ramps for an entire palette
+   */
+  generatePaletteRamps(palette: string[], outputFormat: ColorFormat = 'hex'): Record<string, ColorRamp> {
+    const ramps: Record<string, ColorRamp> = {};
+    palette.forEach((color, index) => {
+      const colorName = `color${index + 1}`;
+      ramps[colorName] = this.generateRamp(color, outputFormat);
+    });
+    return ramps;
   }
 
   /**

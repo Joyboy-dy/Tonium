@@ -1,6 +1,6 @@
 # Tonium 💎
 
-**Tonium** est un orchestreur de design system et un moteur de cohérence visuelle conçu pour les projets front-end modernes (Next.js, Tailwind CSS, shadcn/ui). 
+**Tonium** est un orchestreur de design system et un moteur de cohérence visuelle conçu pour les projets front-end modernes (Next.js, Tailwind CSS, shadcn/ui).
 
 Il garantit l'alignement parfait entre votre vision créative, l'accessibilité réelle (WCAG) et l'implémentation technique, tout en fournissant une couche sémantique prête pour les agents d'intelligence artificielle (MCP).
 
@@ -10,10 +10,11 @@ Il garantit l'alignement parfait entre votre vision créative, l'accessibilité 
 
 - 🎨 **Moteur Chromatique OKLCH** : Manipulation des couleurs dans l'espace perceptuel pour des contrastes parfaits et des teintes vibrantes.
 - 📐 **Audit d'Accessibilité** : Analyse en temps réel des contrastes et détection automatique des vulnérabilités WCAG AA/AAA.
-- 🔡 **Moteur Typographique** : Gestion intelligente des hiérarchies (Heading, Body, Mono) avec intégration Google Fonts automatique.
-- 🤖 **IA-First** : Génère des artefacts de règles de design (`brand-system.md`, `design-rules.md`) optimisés en Anglais pour les agents IA.
+- 🔡 **Moteur Typographique Intelligent** : Détecte et respecte les polices existantes (next/font/google), ne force jamais de fallbacks non désirés.
+- 🤖 **IA-First** : Génère des artefacts de règles de design (`brand-system.md`, `design-rules.md`, `AGENTS.md`) optimisés en Anglais pour les agents IA.
 - 🌐 **Multilingue (CLI)** : Interface interactive disponible en **Français** et **Anglais**.
 - 🛠️ **Compatible MCP** : Serveur Model Context Protocol intégré pour connecter votre design à des outils comme Claude Desktop.
+- 🎯 **Détection de Projet** : Scanne automatiquement `app/layout.tsx` et `app/globals.css` pour comprendre l'existant avant de modifier.
 
 ---
 
@@ -61,26 +62,32 @@ yarn dlx tonium init
 
 ## 📖 Utilisation
 
-Le flux de travail avec Tonium est conçu pour être simple et progressif.
+Le flux de travail avec Tonium est conçu pour détecter, respecter, puis corriger votre projet.
 
 ### 1. Initialisation
-Démarrez votre projet Design System. Tonium scannera votre architecture (Next.js, Tailwind) et vous posera des questions sur votre identité de marque.
+Tonium scanne votre projet (Next.js, Tailwind, polices existantes) et vous pose des questions sur votre identité de marque.
 ```bash
 npx tonium init
 ```
-*Note : C'est ici que vous choisirez la langue de l'interface (FR/EN) et vos préférences typographiques.*
 
-### 2. Audit Visuel
-Analysez vos fichiers CSS existants pour extraire les couleurs et vérifier les contrastes.
-```bash
-npx tonium audit
-```
+**Nouveau en V1.2 :**
+- Détection des polices existantes dans `app/layout.tsx` et `app/globals.css`
+- Option de conservation des polices détectées
+- Palette de marque (plusieurs couleurs) au lieu d'une seule couleur primaire
+- Choix du format de sortie (HEX, RGB, HSL, OKLCH)
 
-### 3. Application du Système
-Générez les tokens (JSON/CSS) et les artefacts pour vos agents IA.
+### 2. Application du Système
+Tonium modifie vos fichiers sources actifs et génère les artefacts pour les agents IA.
 ```bash
 npx tonium apply
 ```
+
+**Ce que fait `apply` en V1.2 :**
+- Met à jour `app/globals.css` avec les tokens couleur
+- Modifie `app/layout.tsx` seulement si les polices changent
+- Génère les artefacts agents dans `.agents/tonium/`
+- Crée/met à jour `AGENTS.md` à la racine
+- Génère le skill standard sous `.agents/skills/chromatic-design/`
 
 ---
 
@@ -104,12 +111,17 @@ npm publish
 
 Tonium organise ses données de manière transparente à la racine de votre projet :
 
-- **`.tonium/`** : 
-  - `config.json` : Configuration centrale du design system (Version 1.0.1).
-  - `tokens/` : Fichiers CSS et JSON contenant vos rampes de couleurs et variables font-family.
-- **`.agents/tonium/`** : 
+- **`.tonium/`** :
+  - `config.json` : Configuration centrale du design system (Version 1.2.0).
+  - `tokens/` : Fichiers JSON contenant palette, scales, et tokens sémantiques.
+  - `generated/` : Tokens CSS générés pour import dans `globals.css`.
+- **`.agents/tonium/`** :
   - `brand-system.md` : Votre identité de marque expliquée aux IA (en Anglais).
   - `design-rules.md` : Les contraintes de design strictes pour vos agents codeurs (en Anglais).
+- **`.agents/skills/chromatic-design/`** :
+  - `SKILL.md` : Skill standard compatible avec les agents IA.
+  - `references/` : Documentation détaillée sur les contrastes et tokens.
+- **`AGENTS.md`** (racine) : Point d'entrée pour les agents IA avec bloc Tonium délimité.
 
 ---
 
@@ -128,8 +140,9 @@ Tonium est conçu pour fonctionner de manière agnostique sur les environnements
 
 - [x] **Phase 1** : Moteur Couleur OKLCH & CLI de base.
 - [x] **Phase 2** : i18n & Moteur Typographique.
-- [ ] **Phase 3** : Enrichissement Sémantique via IA (OpenRouter).
-- [ ] **Phase 4** : Serveur MCP complet et intégration de Skills.
+- [x] **Phase 3** : Détection de projet et respect de l'existant (V1.2).
+- [ ] **Phase 4** : Enrichissement Sémantique via IA (OpenRouter).
+- [ ] **Phase 5** : Serveur MCP complet.
 
 ---
 
