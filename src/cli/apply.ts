@@ -14,7 +14,7 @@ export async function applyCommand() {
   const config = await configManager.loadConfig();
 
   if (!config) {
-    logger.error('Projet non initialisé / Project not initialized. Run `tonium init`.');
+    logger.error('Projet non initialisé / Project not initialized. Run `npx tonium init`.');
     return;
   }
 

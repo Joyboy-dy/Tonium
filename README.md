@@ -66,20 +66,36 @@ Le flux de travail avec Tonium est conçu pour être simple et progressif.
 ### 1. Initialisation
 Démarrez votre projet Design System. Tonium scannera votre architecture (Next.js, Tailwind) et vous posera des questions sur votre identité de marque.
 ```bash
-tonium init
+npx tonium init
 ```
 *Note : C'est ici que vous choisirez la langue de l'interface (FR/EN) et vos préférences typographiques.*
 
 ### 2. Audit Visuel
 Analysez vos fichiers CSS existants pour extraire les couleurs et vérifier les contrastes.
 ```bash
-tonium audit
+npx tonium audit
 ```
 
 ### 3. Application du Système
 Générez les tokens (JSON/CSS) et les artefacts pour vos agents IA.
 ```bash
-tonium apply
+npx tonium apply
+```
+
+---
+
+## 🏗️ Pour les Développeurs (Maintenance)
+
+Si vous contribuez au projet ou souhaitez gérer vos propres releases :
+
+```bash
+# Lancer le script de release automatique
+# (Détecte le type de version via les commits et gère le build/tagging)
+npm run release
+
+# Puis publier
+git push --follow-tags
+npm publish
 ```
 
 ---
