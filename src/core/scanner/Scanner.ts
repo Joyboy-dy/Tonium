@@ -122,9 +122,12 @@ export class Scanner {
         for (const fontName of fontNames) {
           // Try to infer role from variable assignment
           const varRegex = new RegExp(`const\\s+(\\w+)\\s*=\\s*${fontName}`, 'g');
-          const varMatch = layoutContent.match(varRegex);
-          if (varMatch) {
+          const varMatches = [...layoutContent.matchAll(varRegex)];
+          
+          for (const varMatch of varMatches) {
             const varName = varMatch[1];
+            if (!varName) continue;
+            
             // Common naming patterns
             if (varName.toLowerCase().includes('heading') || fontName.toLowerCase().includes('epilogue')) {
               detected.heading = fontName;
