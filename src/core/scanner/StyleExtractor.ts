@@ -1,4 +1,5 @@
 import fs from 'fs-extra';
+import { formatCss, parse } from 'culori';
 import { ColorEngine } from '../color/ColorEngine.js';
 
 export interface StyleReport {
@@ -10,19 +11,56 @@ export interface StyleReport {
 
 export class StyleExtractor {
   private colorEngine = new ColorEngine();
+  private cssColorRegex = /#(?:[\da-fA-F]{3,4}|[\da-fA-F]{6}|[\da-fA-F]{8})\b|(?:rgb|rgba|hsl|hsla|oklch)\([^)]+\)|var\(--[\w-]+\)/g;
 
-  /**
-   * Extract hex colors from a CSS file string
-   */
   async extractColors(cssPath: string): Promise<string[]> {
     if (!(await fs.pathExists(cssPath))) return [];
     const content = await fs.readFile(cssPath, 'utf-8');
-    
-    // Naive regex for hex colors
-    const hexRegex = /#([A-Fa-f0-9]{3,8})\b/g;
-    const matches = content.match(hexRegex) || [];
-    
-    return [...new Set(matches)]; // Unique colors
+
+    const variableMap = this.extractCssVariables(content);
+    const matches = content.match(this.cssColorRegex) || [];
+
+    const normalized = matches
+      .map((value) => this.resolveColorValue(value, variableMap))
+      .filter((value): value is string => !!value);
+
+    return [...new Set(normalized)];
+  }
+
+  private extractCssVariables(content: string): Record<string, string> {
+    const map: Record<string, string> = {};
+    const variableRegex = /(--[\w-]+)\s*:\s*([^;]+);/g;
+
+    for (const match of content.matchAll(variableRegex)) {
+      const [, name, rawValue] = match;
+      if (name && rawValue) {
+        map[name] = rawValue.trim();
+      }
+    }
+
+    return map;
+  }
+
+  private resolveColorValue(value: string, variableMap: Record<string, string>, depth = 0): string | null {
+    const trimmed = value.trim();
+    if (depth > 4) return null;
+
+    if (trimmed.startsWith('var(')) {
+      const varMatch = trimmed.match(/^var\((--[\w-]+)(?:,\s*([^)]+))?\)$/);
+      if (!varMatch) return null;
+      const variableValue = variableMap[varMatch[1]];
+      if (variableValue) {
+        return this.resolveColorValue(variableValue, variableMap, depth + 1);
+      }
+      if (varMatch[2]) {
+        return this.resolveColorValue(varMatch[2], variableMap, depth + 1);
+      }
+      return null;
+    }
+
+    const parsed = parse(trimmed);
+    if (!parsed) return null;
+    return formatCss(parsed);
   }
 
   /**

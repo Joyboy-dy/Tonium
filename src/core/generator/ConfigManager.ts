@@ -8,7 +8,6 @@ export interface ToniumConfig {
   aiArtifactsLanguage: 'en';        // Langue forcée (AI-facing)
   projectType: string;
   features: {
-    ai: boolean;
     mcp: boolean;
     skills: boolean;
     typography: boolean;
@@ -31,7 +30,6 @@ export interface ToniumConfig {
   };
   options: {
     themeMode: 'light' | 'dark' | 'hybrid';
-    openRouterKey?: string;
   };
 }
 
@@ -46,10 +44,11 @@ export class ConfigManager {
 
   async initDirs(): Promise<void> {
     await fs.ensureDir(path.join(this.cwd, this.configDir));
-    await fs.ensureDir(path.join(this.cwd, '.agents/tonium'));
     await fs.ensureDir(path.join(this.cwd, '.agents/skills'));
     await fs.ensureDir(path.join(this.cwd, this.configDir, 'tokens'));
     await fs.ensureDir(path.join(this.cwd, this.configDir, 'generated'));
+    await fs.ensureDir(path.join(this.cwd, this.configDir, 'reports'));
+    await fs.ensureDir(path.join(this.cwd, this.configDir, 'scan'));
   }
 
   async saveConfig(config: ToniumConfig): Promise<void> {
