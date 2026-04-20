@@ -10,28 +10,86 @@ export class SourceGenerator {
     this.cwd = cwd;
   }
 
-  async updateGlobalsCss(config: ToniumConfig): Promise<string[]> {
+  async updateGlobalsCss(config: ToniumConfig, paletteRamps: Record<string, ColorRamp>): Promise<string[]> {
     const globalCssPath = config.project.globalCssPath;
-    if (!globalCssPath) {
-      return [];
-    }
+    if (!globalCssPath) return [];
 
     let cssContent = await fs.readFile(globalCssPath, 'utf-8');
-    const semanticRoleBlock = this.generateProjectSemanticRoleBlock();
 
+    // Remove old Tonium blocks if they exist
     const toniumStart = '/* BEGIN:tonium-roles */';
     const toniumEnd = '/* END:tonium-roles */';
-
     if (cssContent.includes(toniumStart) && cssContent.includes(toniumEnd)) {
       const startIdx = cssContent.indexOf(toniumStart);
       const endIdx = cssContent.indexOf(toniumEnd) + toniumEnd.length;
-      cssContent = `${cssContent.slice(0, startIdx)}${semanticRoleBlock}${cssContent.slice(endIdx)}`;
-    } else {
-      cssContent = `${cssContent.trimEnd()}\n\n${semanticRoleBlock}\n`;
+      cssContent = cssContent.slice(0, startIdx).trimEnd() + '\n' + cssContent.slice(endIdx).trimStart();
     }
+
+    const mapping = this.calculateSemanticMapping(paletteRamps);
+
+    cssContent = this.replaceVariablesInBlock(cssContent, ':root', mapping.light);
+    cssContent = this.replaceVariablesInBlock(cssContent, '.dark', mapping.dark);
 
     await fs.writeFile(globalCssPath, cssContent, 'utf-8');
     return [globalCssPath];
+  }
+
+  private calculateSemanticMapping(paletteRamps: Record<string, ColorRamp>): { light: Record<string, string>, dark: Record<string, string> } {
+    const brand = paletteRamps.color1 || Object.values(paletteRamps)[0] || {};
+    const secondary = paletteRamps.color2 || brand;
+
+    return {
+      light: {
+        '--background': brand['50'] || '#ffffff',
+        '--foreground': brand['950'] || '#000000',
+        '--primary': brand['600'] || '#2563eb',
+        '--primary-foreground': brand['50'] || '#ffffff',
+        '--secondary': secondary['100'] || '#f3f4f6',
+        '--secondary-foreground': secondary['900'] || '#1f2937',
+        '--muted': brand['100'] || '#f3f4f6',
+        '--muted-foreground': brand['500'] || '#6b7280',
+        '--accent': secondary['100'] || '#f3f4f6',
+        '--accent-foreground': secondary['900'] || '#1f2937',
+        '--destructive': '0 84.2% 60.2%', 
+        '--destructive-foreground': '0 0% 98%',
+        '--border': brand['200'] || '#e5e7eb',
+        '--input': brand['200'] || '#e5e7eb',
+        '--ring': brand['600'] || '#2563eb',
+      },
+      dark: {
+        '--background': brand['950'] || '#030712',
+        '--foreground': brand['50'] || '#f9fafb',
+        '--primary': brand['500'] || '#3b82f6',
+        '--primary-foreground': brand['950'] || '#030712',
+        '--secondary': secondary['800'] || '#1f2937',
+        '--secondary-foreground': secondary['50'] || '#f9fafb',
+        '--muted': brand['800'] || '#1f2937',
+        '--muted-foreground': brand['400'] || '#9ca3af',
+        '--accent': secondary['800'] || '#1f2937',
+        '--accent-foreground': secondary['50'] || '#f9fafb',
+        '--destructive': '0 62.8% 30.6%',
+        '--destructive-foreground': '0 0% 98%',
+        '--border': brand['800'] || '#1f2937',
+        '--input': brand['800'] || '#1f2937',
+        '--ring': brand['500'] || '#3b82f6',
+      }
+    };
+  }
+
+  private replaceVariablesInBlock(css: string, selector: string, mapping: Record<string, string>): string {
+    const blockRegex = new RegExp(`${selector.replace('.', '\\.')}\\s*{([^}]*)}`, 'g');
+    if (!blockRegex.test(css)) return css;
+    
+    return css.replace(blockRegex, (match, content) => {
+      let updatedContent = content;
+      Object.entries(mapping).forEach(([variable, value]) => {
+        const varRegex = new RegExp(`${variable}:\\s*[^;]+;`, 'g');
+        if (varRegex.test(updatedContent)) {
+          updatedContent = updatedContent.replace(varRegex, `${variable}: ${value};`);
+        }
+      });
+      return `${selector} {${updatedContent}}`;
+    });
   }
 
   async updateLayoutTs(config: ToniumConfig): Promise<string[]> {
@@ -110,26 +168,16 @@ export class SourceGenerator {
     const globalCssPath = config.project.globalCssPath;
     if (!globalCssPath) return [];
 
-    const tokensPath = path.join(this.cwd, '.tonium/generated/tokens.css');
-    const importTarget = path.relative(path.dirname(globalCssPath), tokensPath).replace(/\\/g, '/');
-    const importStatement = `@import "${importTarget.startsWith('.') ? importTarget : `./${importTarget}`}";`;
-
     let cssContent = await fs.readFile(globalCssPath, 'utf-8');
     const importRegex = /@import\s+['"]([^'"]*\.tonium\/generated\/tokens\.css)['"];?/;
 
     if (importRegex.test(cssContent)) {
-      cssContent = cssContent.replace(importRegex, importStatement);
+      cssContent = cssContent.replace(importRegex, '').trimStart();
       await fs.writeFile(globalCssPath, cssContent, 'utf-8');
       return [globalCssPath];
     }
 
-    if (cssContent.includes(importStatement)) {
-      return [];
-    }
-
-    cssContent = `${importStatement}\n${cssContent}`;
-    await fs.writeFile(globalCssPath, cssContent, 'utf-8');
-    return [globalCssPath];
+    return [];
   }
 
   async saveGeneratedTokens(config: ToniumConfig, paletteRamps: Record<string, ColorRamp>): Promise<string[]> {
@@ -202,24 +250,5 @@ export class SourceGenerator {
       '--color-semantic-border-default': brand['300'] || '#d4d4d4',
     };
   }
-
-  private generateProjectSemanticRoleBlock(): string {
-    return `/* BEGIN:tonium-roles */
-:root {
-  --background: var(--color-semantic-surface-default-bg);
-  --card: var(--color-semantic-surface-card-bg);
-  --accent: var(--color-semantic-action-accent-bg);
-  --primary: var(--color-semantic-action-primary-bg);
-  --foreground: var(--color-semantic-text-default-primary);
 }
 
-.dark {
-  --background: var(--color-primitive-color1-900);
-  --card: var(--color-primitive-color1-800);
-  --accent: var(--color-primitive-color2-700, var(--color-primitive-color1-700));
-  --primary: var(--color-primitive-color1-500);
-  --foreground: var(--color-primitive-color1-50);
-}
-/* END:tonium-roles */`;
-  }
-}

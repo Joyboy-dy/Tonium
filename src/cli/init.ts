@@ -158,20 +158,12 @@ export async function initCommand() {
     monoFont = fonts.monoFont || '';
   }
 
-  // IA Optionnelle
-  const useIA = await p.confirm({ message: t(locale, 'cli.iaEnabled'), initialValue: false });
-  let openRouterKey;
-  if (useIA === true) {
-    openRouterKey = await p.password({ message: t(locale, 'cli.openRouterKey') });
-  }
-
   const config: ToniumConfig = {
-    version: '1.2.0',
+    version: '1.4.0',
     locale,
     aiArtifactsLanguage: 'en',
     projectType: projectInfo.isNextJs ? 'nextjs' : 'unknown',
     features: {
-      ai: !!useIA,
       mcp: true,
       skills: true,
       typography: true,
@@ -194,7 +186,6 @@ export async function initCommand() {
     },
     options: {
       themeMode: mode as any,
-      openRouterKey: typeof openRouterKey === 'string' ? openRouterKey : undefined,
     },
   };
 
@@ -233,6 +224,20 @@ export async function initCommand() {
   finalLoading.stop(t(locale, 'cli.initSuccess'));
   logger.info(`${locale === 'fr' ? 'Configuration' : 'Config'}: ${chalk.cyan('.tonium/config.json')}`);
   logger.info(`${locale === 'fr' ? 'Détection projet' : 'Project detection'}: ${chalk.cyan('.tonium/reports/project-detection.json')}`);
+
+  p.note(locale === 'fr' ? `Skill recommandé pour une meilleure cohérence chromatique agent :
+npx @joyboy-dy/felicio-ai-skills add chromatic-design
+
+Pourquoi :
+- complète les règles écrites dans AGENTS.md
+- aide les agents à mieux respecter les contrastes et l’usage des couleurs
+- recommandé mais optionnel` : `Recommended skill for better agent-side chromatic consistency:
+npx @joyboy-dy/felicio-ai-skills add chromatic-design
+
+Why:
+- complements the rules written in AGENTS.md
+- helps agents better follow contrast and color-usage rules
+- recommended but optional`);
 
   p.outro(chalk.green(t(locale, 'cli.outroInit')));
 }

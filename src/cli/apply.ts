@@ -70,7 +70,7 @@ export async function applyCommand() {
   (await sourceGenerator.saveGeneratedTokens(config, paletteRamps)).forEach((filePath) => writtenArtifacts.add(filePath));
 
   // 6. Mise à jour des fichiers sources du projet
-  (await sourceGenerator.updateGlobalsCss(config)).forEach((filePath) => writtenArtifacts.add(filePath));
+  (await sourceGenerator.updateGlobalsCss(config, paletteRamps)).forEach((filePath) => writtenArtifacts.add(filePath));
   (await sourceGenerator.updateLayoutTs(config)).forEach((filePath) => writtenArtifacts.add(filePath));
   (await sourceGenerator.ensureImportStatement(config)).forEach((filePath) => writtenArtifacts.add(filePath));
 
@@ -84,6 +84,20 @@ export async function applyCommand() {
   [...writtenArtifacts]
     .sort((a, b) => a.localeCompare(b))
     .forEach((filePath) => logger.info(` - ${chalk.cyan(path.relative(process.cwd(), filePath))}`));
+
+  p.note(locale === 'fr' ? `Skill recommandé pour une meilleure cohérence chromatique agent :
+npx @joyboy-dy/felicio-ai-skills add chromatic-design
+
+Pourquoi :
+- complète les règles écrites dans AGENTS.md
+- aide les agents à mieux respecter les contrastes et l’usage des couleurs
+- recommandé mais optionnel` : `Recommended skill for better agent-side chromatic consistency:
+npx @joyboy-dy/felicio-ai-skills add chromatic-design
+
+Why:
+- complements the rules written in AGENTS.md
+- helps agents better follow contrast and color-usage rules
+- recommended but optional`);
 
   p.outro(chalk.green(locale === 'fr' ? 'Prêt à coder.' : 'Ready to code.'));
 }
