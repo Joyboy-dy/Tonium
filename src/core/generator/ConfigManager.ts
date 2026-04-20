@@ -41,7 +41,7 @@ export class ConfigManager {
   private cwd: string;
 
   constructor(cwd: string = process.cwd()) {
-    this.cwd = cwd;
+    this.cwd = path.resolve(cwd);
   }
 
   async initDirs(): Promise<void> {

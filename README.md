@@ -91,6 +91,34 @@ npx tonium apply
 
 ---
 
+## 🛠 Détection du projet
+
+Tonium analyse automatiquement votre projet pour détecter :
+- Le framework (Next.js supporté)
+- La présence de Tailwind CSS
+- La configuration de shadcn/ui
+- Les polices Google Fonts utilisées
+- Les fichiers CSS globaux
+
+### Résolution des problèmes
+
+Si vous recevez l'erreur `package.json not found`, assurez-vous de :
+1. Lancer la commande à la racine de votre projet Node.js.
+2. Vérifier que vous avez les droits de lecture sur le répertoire.
+3. Sur Windows, préférez l'utilisation d'un terminal standard (CMD ou PowerShell).
+
+---
+
+## 🎨 Design System & Agents
+
+Tonium génère des artefacts dans `.agents/tonium/` pour aider vos agents IA (comme Antigravity ou Claude) à comprendre et respecter vos règles de design.
+
+- `theme-rules.md` : Règles de style Tailwind et CSS.
+- `brand-identity.md` : Identité visuelle et personnalité.
+- `tokens/` : Échelles de couleurs et typographies.
+
+---
+
 ## 🏗️ Pour les Développeurs (Maintenance)
 
 Si vous contribuez au projet ou souhaitez gérer vos propres releases :

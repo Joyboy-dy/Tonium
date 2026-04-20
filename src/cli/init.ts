@@ -34,9 +34,9 @@ export async function initCommand() {
   try {
     projectInfo = await scanner.scan();
     loading.stop(t(locale, 'cli.auditDone'));
-  } catch (error) {
+  } catch (error: any) {
     loading.stop(chalk.red(t(locale, 'cli.cancel')));
-    logger.error('Error: package.json not found.');
+    logger.error(error.message || 'An unexpected error occurred during project scan.');
     return;
   }
 

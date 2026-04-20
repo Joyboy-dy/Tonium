@@ -28,13 +28,13 @@ export class Scanner {
   private cwd: string;
 
   constructor(cwd: string = process.cwd()) {
-    this.cwd = cwd;
+    this.cwd = path.resolve(cwd);
   }
 
   async scan(): Promise<ProjectInfo> {
     const pkgPath = path.join(this.cwd, 'package.json');
     if (!(await fs.pathExists(pkgPath))) {
-      throw new Error('package.json not found. Are you in a Node.js project?');
+      throw new Error(`package.json not found in ${this.cwd}. Are you in a Node.js project?`);
     }
 
     const pkg = await fs.readJson(pkgPath);
