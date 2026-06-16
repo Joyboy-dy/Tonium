@@ -4,3 +4,5 @@ dist/
 .agents/
 .env
 *.log
+tonium-2.0.0.tgz 
+tonium-structure.txt

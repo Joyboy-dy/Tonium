@@ -1,14 +1,22 @@
 {
   "name": "tonium",
-  "version": "1.5.0",
-  "description": "",
+  "version": "2.0.0",
+  "description": "A safe color-theme assistant for Next.js + Tailwind CSS v4 + shadcn/ui projects",
   "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "bin": {
     "tonium": "dist/bin/tonium.js"
   },
   "scripts": {
     "dev": "tsx src/bin/tonium.ts",
-    "build": "tsc",
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc",
     "start": "node dist/bin/tonium.js",
     "prepublishOnly": "npm run build",
     "release": "tsx scripts/release.ts"
