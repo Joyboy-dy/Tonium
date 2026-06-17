@@ -66,6 +66,21 @@ export async function confirmWrite(message: string, yes?: boolean): Promise<bool
   return answer === true;
 }
 
+export function buildNextActionCommand(command: string, args: string[] = [], options: string[] = []): string {
+  return [
+    'tonium',
+    command,
+    ...args.map((arg) => JSON.stringify(arg)),
+    ...options,
+  ].join(' ');
+}
+
+export function printNextAction(command: string): void {
+  logger.blank();
+  logger.header('Next Action');
+  logger.dim(command);
+}
+
 export function buildAuditReport(project: ProjectInfo, css: CssParseResult): AuditReport {
   const warnings: string[] = [];
   const errors: string[] = [];
@@ -217,6 +232,15 @@ export function ensureTokenDeclarations(
 
 export function printThemePreview(theme: GeneratedTheme): void {
   logger.header('Theme Preview');
+  printTheme(theme);
+}
+
+export function printThemeApply(theme: GeneratedTheme): void {
+  logger.header('Theme Apply');
+  printTheme(theme);
+}
+
+function printTheme(theme: GeneratedTheme): void {
   logger.dim(`format: ${theme.outputFormat}`);
 
   for (const mode of [theme.light, theme.dark]) {

@@ -11,7 +11,7 @@ export function createCli(): Command {
   program
     .name('tonium')
     .description('Safe color-theme assistant for Next.js, Tailwind CSS v4, and shadcn/ui.')
-    .version('2.0.0');
+    .version('2.0.1');
 
   registerAuditCommand(program);
   registerThemeCommand(program);

@@ -8,8 +8,10 @@ import { writeFileSafe } from '../../utils/fs.js';
 import { logger } from '../../utils/logger.js';
 import {
   appendCustomCss,
+  buildNextActionCommand,
   confirmWrite,
   loadProjectCss,
+  printNextAction,
   removeIntruderBlocks,
 } from '../shared.js';
 
@@ -34,13 +36,18 @@ export function registerCleanCommand(program: Command): void {
           return;
         }
 
-        logger.header('Clean Preview');
+        logger.header(options.apply ? 'Clean Apply' : 'Clean Preview');
         for (const intruder of result.intruders) {
           logger.warn(`${intruder.selector} lines ${intruder.startLine}-${intruder.endLine}`);
         }
 
         if (!options.apply) {
-          logger.dim('Preview only. Re-run with --apply to move these blocks.');
+          logger.dim('Preview only. No files were changed.');
+          printNextAction(buildNextActionCommand(
+            'clean',
+            [],
+            options.yes ? ['--apply', '--yes'] : ['--apply'],
+          ));
           return;
         }
 

@@ -1,0 +1,62 @@
+[
+  {
+    "name": "lime-orange-dark-light",
+    "palette": ["#bceb5b", "#ff910c", "#242424", "#f6f6f6", "#ffffff"]
+  },
+  {
+    "name": "pastel",
+    "palette": ["#ffd6e7", "#c8e7ff", "#d7f8d7", "#fff2b8", "#2f2f38"],
+    "expectDefaultDestructive": true
+  },
+  {
+    "name": "pastel-surface-separation",
+    "palette": ["#f9a8d4", "#a7f3d0", "#bfdbfe", "#fff7ed", "#1f2937"],
+    "expectDefaultDestructive": true
+  },
+  {
+    "name": "pastel-danger-trap",
+    "palette": ["#ffc4d6", "#e9d5ff", "#bae6fd", "#bbf7d0", "#fef3c7"],
+    "expectDefaultDestructive": true
+  },
+  {
+    "name": "neon",
+    "palette": ["#39ff14", "#ff2bd6", "#00e5ff", "#121212", "#f8f8f8"]
+  },
+  {
+    "name": "no-dark-color",
+    "palette": ["#fef3c7", "#bfdbfe", "#fecdd3", "#dcfce7", "#ffffff"]
+  },
+  {
+    "name": "no-light-color",
+    "palette": ["#111827", "#1e293b", "#312e81", "#7f1d1d", "#064e3b"]
+  },
+  {
+    "name": "twelve-colors",
+    "palette": [
+      "#ef4444",
+      "#f97316",
+      "#f59e0b",
+      "#84cc16",
+      "#22c55e",
+      "#14b8a6",
+      "#06b6d4",
+      "#3b82f6",
+      "#6366f1",
+      "#8b5cf6",
+      "#d946ef",
+      "#f43f5e"
+    ]
+  },
+  {
+    "name": "brand-red-as-primary-no-spare-danger",
+    "palette": ["#0b0b0f", "#f8f5ef", "#c8a45d", "#6f4e37", "#8b1e3f"],
+    "expectDefaultDestructive": true,
+    "comment": "Regression: light primary and destructive used to share the same color. The only red/orange (#8b1e3f) becomes primary; destructive must fall back to shadcn default."
+  },
+  {
+    "name": "brand-blue-secondary-red-already-used",
+    "palette": ["#0f172a", "#f8fafc", "#2563eb", "#38bdf8", "#ef4444"],
+    "expectDefaultDestructive": true,
+    "comment": "Regression: light secondary and destructive used to share the same color. #ef4444 is danger and would become secondary; destructive must fall back to shadcn default."
+  }
+]

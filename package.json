@@ -1,6 +1,6 @@
 {
   "name": "tonium",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "A safe color-theme assistant for Next.js + Tailwind CSS v4 + shadcn/ui projects",
   "type": "module",
   "main": "dist/index.js",
@@ -17,6 +17,7 @@
   "scripts": {
     "dev": "tsx src/bin/tonium.ts",
     "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc",
+    "test:theme-fixtures": "tsx scripts/theme-fixtures.ts",
     "start": "node dist/bin/tonium.js",
     "prepublishOnly": "npm run build",
     "release": "tsx scripts/release.ts"
@@ -26,7 +27,28 @@
     "README.md",
     "skills"
   ],
-  "keywords": [],
+  "keywords": [
+    "tonium",
+    "theme",
+    "themes",
+    "color-theme",
+    "color-palette",
+    "design-system",
+    "semantic-tokens",
+    "css-tokens",
+    "oklch",
+    "contrast",
+    "wcag",
+    "accessibility",
+    "tailwindcss",
+    "tailwindcss-v4",
+    "shadcn",
+    "shadcn-ui",
+    "nextjs",
+    "next-js",
+    "app-router",
+    "cli"
+  ],
   "author": "",
   "license": "Apache-2.0",
   "dependencies": {
