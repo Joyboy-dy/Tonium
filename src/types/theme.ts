@@ -146,8 +146,8 @@ export interface TokenAssignment {
   token: SemanticToken;
   /** The CSS value string in the chosen output format */
   value: string;
-  /** Whether this is a shadcn/ui default (preserved) or user-provided */
-  source: 'default' | 'palette' | 'generated' | 'preserved';
+  /** Origin or dark-mode treatment of this token value */
+  source: 'default' | 'palette' | 'generated' | 'preserved' | 'adjusted';
   /** Contrast check result if this token has a paired foreground/background */
   contrast?: ContrastResult;
 }

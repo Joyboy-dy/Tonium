@@ -1,11 +1,11 @@
 import path from 'node:path';
 import type { Command } from 'commander';
 
-import { updateAgentsFile } from '../../core/agents/manage.js';
+import { buildAgentsFileContent, readAgentsFile, updateAgentsFile } from '../../core/agents/manage.js';
 import type { AgentsOptions } from '../../types/index.js';
 import { writeFileSafe } from '../../utils/fs.js';
 import { logger } from '../../utils/logger.js';
-import { confirmWrite, loadProjectCss } from '../shared.js';
+import { buildNextActionCommand, confirmWrite, loadProjectCss, printNextAction } from '../shared.js';
 
 export function registerAgentsCommand(program: Command): void {
   program
@@ -16,14 +16,21 @@ export function registerAgentsCommand(program: Command): void {
     .action(async (options: AgentsOptions) => {
       try {
         const { project } = await loadProjectCss();
-        const agents = await updateAgentsFile(project.rootDir, project.appDir);
+        const agents = options.apply
+          ? await updateAgentsFile(project.rootDir, project.appDir)
+          : buildAgentsFileContent(await readAgentsFile(project.rootDir), project.appDir);
         const agentsPath = path.join(project.rootDir, 'AGENTS.md');
 
-        logger.header('AGENTS.md Preview');
+        logger.header(options.apply ? 'Agents Apply' : 'Agents Preview');
         console.log(agents.content);
 
         if (!options.apply) {
-          logger.dim('Preview only. Re-run with --apply to write AGENTS.md.');
+          logger.dim('Preview only. No files were changed.');
+          printNextAction(buildNextActionCommand(
+            'agents',
+            [],
+            options.yes ? ['--apply', '--yes'] : ['--apply'],
+          ));
           return;
         }
 

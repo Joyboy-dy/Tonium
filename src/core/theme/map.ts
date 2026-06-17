@@ -86,7 +86,7 @@ function cssToOklch(cssValue: string): OklchColor {
 function assign(
   token: SemanticToken,
   value: string,
-  source: 'default' | 'palette' | 'generated' | 'preserved',
+  source: TokenAssignment['source'],
 ): TokenAssignment {
   return { token, value, source };
 }
@@ -119,6 +119,68 @@ function chooseForeground(
   return formatColor(adjustForContrast({ ...bg }, bg, targetRatio), format);
 }
 
+function chooseForegroundColor(bg: OklchColor, targetRatio = 4.5): OklchColor {
+  const neutralCandidates: OklchColor[] = [
+    { l: 1, c: 0, h: 0 },
+    { l: 0, c: 0, h: 0 },
+    { l: 0.985, c: 0, h: 0 },
+    { l: 0.145, c: 0, h: 0 },
+  ];
+
+  const ranked = neutralCandidates
+    .map((color) => ({ color, ratio: contrastRatio(color, bg) }))
+    .sort((a, b) => b.ratio - a.ratio);
+
+  return (ranked.find((candidate) => candidate.ratio >= targetRatio) ?? ranked[0]).color;
+}
+
+function chooseDarkBrand(
+  original: OklchColor,
+  darkBackground: OklchColor,
+): { color: OklchColor; source: 'preserved' | 'adjusted' } {
+  const minSurfaceContrast = 2.0;
+  const foreground = chooseForegroundColor(original);
+
+  if (
+    contrastRatio(original, darkBackground) >= minSurfaceContrast &&
+    contrastRatio(foreground, original) >= 4.5
+  ) {
+    return { color: original, source: 'preserved' };
+  }
+
+  let adjusted: OklchColor = { ...original };
+
+  for (let i = 0; i < 12; i++) {
+    adjusted = {
+      ...adjusted,
+      l: Math.min(0.86, adjusted.l + 0.035),
+      c: Math.max(0, adjusted.c * 0.96),
+    };
+
+    const adjustedForeground = chooseForegroundColor(adjusted);
+    if (
+      contrastRatio(adjusted, darkBackground) >= minSurfaceContrast &&
+      contrastRatio(adjustedForeground, adjusted) >= 4.5
+    ) {
+      return { color: adjusted, source: 'adjusted' };
+    }
+  }
+
+  return { color: adjusted, source: 'adjusted' };
+}
+
+function isDangerColor(color: ClassifiedColor): boolean {
+  const { l, c } = color.parsed.oklch;
+  const hue = color.traits.hueFamily;
+
+  return (
+    (hue === 'red' || hue === 'orange') &&
+    c >= 0.12 &&
+    l >= 0.35 &&
+    l <= 0.72
+  );
+}
+
 /**
  * Invert lightness for dark mode.
  * Maps L from light-space to dark-space:
@@ -129,6 +191,120 @@ function chooseForeground(
 function invertLightness(l: number): number {
   // Simple symmetric flip with clamping
   return Math.max(0, Math.min(1, 1 - l));
+}
+
+function clampLightness(l: number): number {
+  return Math.max(0, Math.min(1, l));
+}
+
+function surfaceCandidate(
+  background: OklchColor,
+  mode: 'light' | 'dark',
+  offset: number,
+): OklchColor {
+  const direction = mode === 'dark' ? 1 : background.l > 0.96 ? -1 : 1;
+
+  return {
+    l: clampLightness(background.l + direction * offset),
+    c: background.c * 0.45,
+    h: background.h,
+  };
+}
+
+function ensureSeparatedSurface(
+  color: OklchColor,
+  background: OklchColor,
+  mode: 'light' | 'dark',
+  minContrast: number,
+  minLightnessDelta: number,
+): OklchColor {
+  const direction = mode === 'dark' ? 1 : background.l > 0.96 ? -1 : 1;
+  let adjusted: OklchColor = { ...color };
+
+  for (let i = 0; i < 16; i++) {
+    const lightnessDelta = Math.abs(adjusted.l - background.l);
+    if (
+      lightnessDelta >= minLightnessDelta &&
+      contrastRatio(adjusted, background) >= minContrast
+    ) {
+      return adjusted;
+    }
+
+    adjusted = {
+      ...adjusted,
+      l: clampLightness(adjusted.l + direction * 0.012),
+      c: adjusted.c * 0.9,
+    };
+  }
+
+  return adjusted;
+}
+
+function setSurfaceToken(
+  tokens: Map<string, { value: string; source: TokenAssignment['source'] }>,
+  token: string,
+  color: OklchColor,
+  format: ColorOutputFormat,
+): void {
+  tokens.set(token, { value: formatColor(color, format), source: 'generated' });
+}
+
+function enforceSurfaceSeparation(
+  tokens: Map<string, { value: string; source: TokenAssignment['source'] }>,
+  mode: 'light' | 'dark',
+  format: ColorOutputFormat,
+): void {
+  const background = cssToOklch(tokens.get('background')?.value ?? LIGHT_DEFAULTS.background);
+  const card = ensureSeparatedSurface(
+    surfaceCandidate(background, mode, mode === 'dark' ? 0.045 : 0.025),
+    background,
+    mode,
+    mode === 'dark' ? 1.08 : 1.04,
+    mode === 'dark' ? 0.035 : 0.018,
+  );
+  const popover = ensureSeparatedSurface(
+    surfaceCandidate(background, mode, mode === 'dark' ? 0.065 : 0.035),
+    background,
+    mode,
+    mode === 'dark' ? 1.1 : 1.05,
+    mode === 'dark' ? 0.05 : 0.025,
+  );
+  const sidebar = ensureSeparatedSurface(
+    surfaceCandidate(background, mode, mode === 'dark' ? 0.035 : 0.02),
+    background,
+    mode,
+    mode === 'dark' ? 1.06 : 1.035,
+    mode === 'dark' ? 0.03 : 0.015,
+  );
+  const muted = ensureSeparatedSurface(
+    surfaceCandidate(background, mode, mode === 'dark' ? 0.085 : 0.045),
+    background,
+    mode,
+    mode === 'dark' ? 1.12 : 1.06,
+    mode === 'dark' ? 0.065 : 0.035,
+  );
+  const border = ensureSeparatedSurface(
+    surfaceCandidate(background, mode, mode === 'dark' ? 0.12 : 0.08),
+    background,
+    mode,
+    mode === 'dark' ? 1.25 : 1.16,
+    mode === 'dark' ? 0.09 : 0.06,
+  );
+  const input = ensureSeparatedSurface(
+    surfaceCandidate(background, mode, mode === 'dark' ? 0.1 : 0.07),
+    background,
+    mode,
+    mode === 'dark' ? 1.2 : 1.13,
+    mode === 'dark' ? 0.075 : 0.05,
+  );
+
+  setSurfaceToken(tokens, 'card', card, format);
+  setSurfaceToken(tokens, 'popover', popover, format);
+  setSurfaceToken(tokens, 'sidebar', sidebar, format);
+  setSurfaceToken(tokens, 'muted', muted, format);
+  setSurfaceToken(tokens, 'border', border, format);
+  setSurfaceToken(tokens, 'input', input, format);
+  setSurfaceToken(tokens, 'sidebar-border', border, format);
 }
 
 // ---------------------------------------------------------------------------
@@ -152,8 +328,8 @@ export function mapPaletteToTheme(
   // -----------------------------------------------------------------------
   // Step 1: Start with defaults for all tokens
   // -----------------------------------------------------------------------
-  const lightTokens: Map<string, { value: string; source: 'default' | 'palette' | 'generated' | 'preserved' }> = new Map();
-  const darkTokens: Map<string, { value: string; source: 'default' | 'palette' | 'generated' | 'preserved' }> = new Map();
+  const lightTokens: Map<string, { value: string; source: TokenAssignment['source'] }> = new Map();
+  const darkTokens: Map<string, { value: string; source: TokenAssignment['source'] }> = new Map();
 
   for (const [token, value] of Object.entries(LIGHT_DEFAULTS)) {
     lightTokens.set(token, { value, source: 'default' });
@@ -285,14 +461,9 @@ export function mapPaletteToTheme(
   // Step 6: Surface tokens — only replace if palette has good candidates
   // -----------------------------------------------------------------------
   const lightBgCandidate = colors.find((c) => c.traits.canBeLightBg);
-  const darkBgCandidate = colors.find((c) => c.traits.canBeDarkBg);
-
   if (lightBgCandidate) {
     const bgValue = formatClassified(lightBgCandidate, format);
     lightTokens.set('background', { value: bgValue, source: 'palette' });
-    lightTokens.set('card', { value: bgValue, source: 'palette' });
-    lightTokens.set('popover', { value: bgValue, source: 'palette' });
-    lightTokens.set('sidebar', { value: bgValue, source: 'palette' });
 
     // Derive foreground — need something dark for contrast
     const fgOklch = { l: 0.145, c: lightBgCandidate.parsed.oklch.c * 0.1, h: lightBgCandidate.parsed.oklch.h };
@@ -305,17 +476,55 @@ export function mapPaletteToTheme(
 
   // -----------------------------------------------------------------------
   // Step 7: Destructive — only use palette color if red/orange with good contrast
+  //         AND not already used as a brand token (primary / secondary / accent).
   // -----------------------------------------------------------------------
-  const destructiveCandidate = colors.find(
-    (c) => c.traits.canBeDestructive && c.traits.saturation !== 'neutral',
-  );
+
+  // Collect the formatted values of brand tokens already assigned
+  const assignedBrandValues = new Set<string>([
+    lightTokens.get('primary')?.value,
+    lightTokens.get('secondary')?.value,
+    lightTokens.get('accent')?.value,
+  ].filter(Boolean) as string[]);
+
+  /**
+   * Returns true when a danger candidate is still "available" — i.e. its
+   * formatted color value has NOT already been assigned to a brand token.
+   */
+  function isDangerAndAvailable(color: ClassifiedColor): boolean {
+    if (!isDangerColor(color)) return false;
+    const formatted = formatClassified(color, format);
+    return !assignedBrandValues.has(formatted);
+  }
+
+  // Try to find a danger color that is not already a brand token
+  const destructiveCandidate = colors.find(isDangerAndAvailable);
 
   if (destructiveCandidate) {
+    // A distinct danger color exists in the palette — use it.
     const destValue = formatClassified(destructiveCandidate, format);
     const destFg = chooseForeground(destructiveCandidate.parsed.oklch, format);
 
     lightTokens.set('destructive', { value: destValue, source: 'palette' });
     lightTokens.set('destructive-foreground', { value: destFg, source: 'generated' });
+    darkTokens.set('destructive-foreground', {
+      value: chooseForeground(cssToOklch(DARK_DEFAULTS.destructive), format),
+      source: 'generated',
+    });
+  } else {
+    // No available danger color: fall back to the shadcn default destructive.
+    // This covers:
+    //   a) palette has no red/orange at all (purely safe colours)
+    //   b) the only red/orange in the palette is already used as primary/secondary/accent
+    // In case (b) we do NOT reuse the brand token for destructive — the default
+    // shadcn destructive (oklch ~0.577 0.245 27) is semantically unambiguous.
+    lightTokens.set('destructive-foreground', {
+      value: chooseForeground(cssToOklch(LIGHT_DEFAULTS.destructive), format),
+      source: 'generated',
+    });
+    darkTokens.set('destructive-foreground', {
+      value: chooseForeground(cssToOklch(DARK_DEFAULTS.destructive), format),
+      source: 'generated',
+    });
   }
 
   // -----------------------------------------------------------------------
@@ -348,8 +557,10 @@ export function mapPaletteToTheme(
     lightTokens.set('muted-foreground', { value: mutedFgValue, source: 'generated' });
   }
 
+  enforceSurfaceSeparation(lightTokens, 'light', format);
+
   // -----------------------------------------------------------------------
-  // Step 9: Generate dark mode by inverting lightness
+  // Step 9: Generate dark mode. Brand colors are preserved when usable.
   // -----------------------------------------------------------------------
   for (const [token, entry] of lightTokens) {
     // Skip radius — it's the same in both modes
@@ -357,6 +568,10 @@ export function mapPaletteToTheme(
 
     // If still default, keep the dark default
     if (entry.source === 'default') continue;
+
+    if (isBrandSurfaceToken(token)) continue;
+    if (isBrandForegroundToken(token)) continue;
+    if (token === 'destructive-foreground') continue;
 
     // Parse the OKLCH values for inversion
     const oklchMatch = entry.value.match(
@@ -375,22 +590,22 @@ export function mapPaletteToTheme(
     }
   }
 
-  // Special handling: dark foregrounds need to be explicitly paired
-  // Re-generate foregrounds in dark mode for brand tokens
-  for (const brandToken of BRAND_TOKENS) {
-    const darkBrand = darkTokens.get(brandToken);
-    if (darkBrand && darkBrand.source !== 'default') {
-      const oklchMatch = darkBrand.value.match(
-        /oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\)/,
-      );
-      if (oklchMatch) {
-        const l = parseFloat(oklchMatch[1]);
-        const c = parseFloat(oklchMatch[2]);
-        const h = parseFloat(oklchMatch[3]);
-        const fgValue = chooseForeground({ l, c, h }, format);
-        darkTokens.set(`${brandToken}-foreground`, { value: fgValue, source: 'generated' });
-      }
-    }
+  enforceSurfaceSeparation(darkTokens, 'dark', format);
+
+  applyDarkBrandToken(darkTokens, 'primary', primary.parsed.oklch, format);
+  applyDarkBrandToken(darkTokens, 'sidebar-primary', primary.parsed.oklch, format);
+
+  if (secondary) {
+    applyDarkBrandToken(darkTokens, 'secondary', secondary.parsed.oklch, format);
+  }
+
+  if (accent) {
+    applyDarkBrandToken(darkTokens, 'accent', accent.parsed.oklch, format);
+    applyDarkBrandToken(darkTokens, 'sidebar-accent', accent.parsed.oklch, format);
+  } else {
+    const generatedAccent = cssToOklch(lightTokens.get('accent')?.value ?? LIGHT_DEFAULTS.accent);
+    applyDarkBrandToken(darkTokens, 'accent', generatedAccent, format, 'generated');
+    applyDarkBrandToken(darkTokens, 'sidebar-accent', generatedAccent, format, 'generated');
   }
 
   // -----------------------------------------------------------------------
@@ -413,7 +628,7 @@ export function mapPaletteToTheme(
  * Run contrast checks for all TOKEN_PAIRS and auto-correct failures.
  */
 function runContrastChecks(
-  tokens: Map<string, { value: string; source: 'default' | 'palette' | 'generated' | 'preserved' }>,
+  tokens: Map<string, { value: string; source: TokenAssignment['source'] }>,
   mode: 'light' | 'dark',
   format: ColorOutputFormat,
   corrections: ThemeCorrection[],
@@ -458,8 +673,8 @@ function runContrastChecks(
  * Build the final GeneratedTheme from token maps.
  */
 function buildTheme(
-  lightTokens: Map<string, { value: string; source: 'default' | 'palette' | 'generated' | 'preserved' }>,
-  darkTokens: Map<string, { value: string; source: 'default' | 'palette' | 'generated' | 'preserved' }>,
+  lightTokens: Map<string, { value: string; source: TokenAssignment['source'] }>,
+  darkTokens: Map<string, { value: string; source: TokenAssignment['source'] }>,
   format: ColorOutputFormat,
   corrections: ThemeCorrection[],
   warnings: string[],
@@ -485,4 +700,36 @@ function buildTheme(
     corrections,
     warnings,
   };
+}
+
+function isBrandSurfaceToken(token: string): boolean {
+  return ['primary', 'secondary', 'accent', 'sidebar-primary', 'sidebar-accent'].includes(token);
+}
+
+function isBrandForegroundToken(token: string): boolean {
+  return [
+    'primary-foreground',
+    'secondary-foreground',
+    'accent-foreground',
+    'sidebar-primary-foreground',
+    'sidebar-accent-foreground',
+  ].includes(token);
+}
+
+function applyDarkBrandToken(
+  tokens: Map<string, { value: string; source: TokenAssignment['source'] }>,
+  token: string,
+  original: OklchColor,
+  format: ColorOutputFormat,
+  fallbackSource?: TokenAssignment['source'],
+): void {
+  const darkBackground = cssToOklch(tokens.get('background')?.value ?? DARK_DEFAULTS.background);
+  const selected = chooseDarkBrand(original, darkBackground);
+  const source = fallbackSource === 'generated' ? 'generated' : selected.source;
+  const value = formatColor(selected.color, format);
+  tokens.set(token, { value, source });
+  tokens.set(`${token}-foreground`, {
+    value: chooseForeground(selected.color, format),
+    source: 'generated',
+  });
 }

@@ -1,6 +1,12 @@
 import type { Command } from 'commander';
 
-import { buildAuditReport, loadProjectCss, printAuditReport } from '../shared.js';
+import {
+  buildAuditReport,
+  buildNextActionCommand,
+  loadProjectCss,
+  printAuditReport,
+  printNextAction,
+} from '../shared.js';
 import type { AuditOptions } from '../../types/index.js';
 import { logger } from '../../utils/logger.js';
 
@@ -19,6 +25,9 @@ export function registerAuditCommand(program: Command): void {
           console.log(JSON.stringify(report, null, 2));
         } else {
           printAuditReport(report);
+          if (report.intruders.length > 0) {
+            printNextAction(buildNextActionCommand('clean', [], ['--preview']));
+          }
         }
 
         if (options.strict && report.score !== 'healthy') {

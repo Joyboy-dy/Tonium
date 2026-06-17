@@ -10,9 +10,12 @@ import type { ThemeOptions } from '../../types/index.js';
 import { writeFileSafe } from '../../utils/fs.js';
 import { logger } from '../../utils/logger.js';
 import {
+  buildNextActionCommand,
   confirmWrite,
   ensureTokenDeclarations,
   loadProjectCss,
+  printNextAction,
+  printThemeApply,
   printThemePreview,
   themeToChangeMaps,
   validateOutputFormat,
@@ -35,7 +38,7 @@ export function registerThemeCommand(program: Command): void {
     .option('--update-agents', 'update AGENTS.md after theme generation')
     .option('--no-update-agents', 'skip AGENTS.md update')
     .option('-y, --yes', 'skip confirmation prompts')
-    .action(async (colors: string[], options: ThemeCommandOptions) => {
+    .action(async (colors: string[], options: ThemeCommandOptions, command: Command) => {
       try {
         const palette = options.palette?.length ? options.palette : colors;
         if (!palette.length) {
@@ -50,12 +53,19 @@ export function registerThemeCommand(program: Command): void {
 
         const { project } = await loadProjectCss();
         const theme = mapPaletteToTheme(classifyColors(parsed), format);
-        printThemePreview(theme);
 
         if (!options.apply) {
-          logger.dim('Preview only. Re-run with --apply to write globals.css.');
+          printThemePreview(theme);
+          printNextAction(buildThemeApplyCommand(
+            palette,
+            format,
+            command.getOptionValueSource('format') !== 'default',
+            options.updateAgents === true,
+          ));
           return;
         }
+
+        printThemeApply(theme);
 
         const ok = await confirmWrite('Apply generated theme to globals.css?', options.yes);
         if (!ok) {
@@ -64,20 +74,42 @@ export function registerThemeCommand(program: Command): void {
         }
 
         const { rootChanges, darkChanges } = themeToChangeMaps(theme);
-        await createBackup(project.globalsCssPath);
+        const backupPath = await createBackup(project.globalsCssPath);
         const changedCss = await applyTokenChanges(project.globalsCssPath, rootChanges, darkChanges);
         const nextCss = ensureTokenDeclarations(changedCss, rootChanges, darkChanges);
         await writeFileSafe(project.globalsCssPath, nextCss);
-        logger.success(`Theme applied to ${logger.filePath(project.globalsCssPath)}`);
+        logger.success(`Backup path: ${logger.filePath(backupPath)}`);
+        logger.success(`globals.css updated: ${logger.filePath(project.globalsCssPath)}`);
 
-        if (options.updateAgents !== false) {
+        if (options.updateAgents === true) {
           const agents = await updateAgentsFile(project.rootDir, project.appDir);
           await writeFileSafe(`${project.rootDir}/AGENTS.md`, agents.content);
-          logger.success(agents.isNew ? 'AGENTS.md created.' : 'AGENTS.md updated.');
+          logger.success(agents.isNew ? 'AGENTS.md updated: created new file.' : 'AGENTS.md updated.');
+        } else {
+          logger.dim('AGENTS.md skipped. Use --update-agents or `tonium agents --apply` to update it.');
         }
       } catch (error) {
         logger.error(error instanceof Error ? error.message : String(error));
         process.exitCode = 1;
       }
     });
+}
+
+function buildThemeApplyCommand(
+  palette: string[],
+  format: string,
+  includeFormat: boolean,
+  updateAgents: boolean,
+): string {
+  const options = ['--apply'];
+
+  if (includeFormat) {
+    options.push('--format', format);
+  }
+
+  if (updateAgents) {
+    options.push('--update-agents');
+  }
+
+  return buildNextActionCommand('theme', palette, options);
 }
